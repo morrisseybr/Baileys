@@ -525,13 +525,18 @@ export const makeSocket = (config: SocketConfig) => {
 	})
 	// login complete
 	ws.on('CB:success', async() => {
-		await uploadPreKeysToServerIfRequired()
-		await sendPassiveIq('active')
+		try {
+			await uploadPreKeysToServerIfRequired()
+			await sendPassiveIq('active')
+			logger.info('opened connection to WA')
+			clearTimeout(qrTimer) // will never happen in all likelyhood -- but just in case WA sends success on first try
+	
+			ev.emit('connection.update', { connection: 'open' })
 
-		logger.info('opened connection to WA')
-		clearTimeout(qrTimer) // will never happen in all likelyhood -- but just in case WA sends success on first try
-
-		ev.emit('connection.update', { connection: 'open' })
+		} catch(error) {
+			logger.error({ trace: error.stack }, 'error after CB:success')
+			end(error)
+		}
 	})
 
 	ws.on('CB:stream:error', (node: BinaryNode) => {
